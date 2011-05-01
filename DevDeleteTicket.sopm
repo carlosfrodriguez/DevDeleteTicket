@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<otrs_package version="1.0">
+    <CVS>$Id: DevDeleteTicket.sopm,v 0.1 2011/05/01 00:00:00 cr Exp $</CVS>
+    <Name>DevDeleteTicket</Name>
+    <Version>0.0.1</Version>
+    <Framework>3.0.x</Framework>
+    <Vendor>Carlos Rodriguez</Vendor>
+    <URL></URL>
+    <License>GNU AFFERO GENERAL PUBLIC LICENSE Version 3, November 2007</License>
+    <Description Lang="en">The Developer's Delete Ticket Package .</Description>
+    <Filelist>
+        <File Permission="755" Location="bin/otrs.DevDeleteTicket.pl"/>
+    </Filelist>
+    <IntroInstall Type="pre" Title="Install Information" Lang="en"><![CDATA[
+        <br/>
+        <strong>WELCOME</strong>
+        <br/>
+        <br/>
+        You are about to install the Developer's Delete Ticket package.<br/>
+        <br/>
+        <br/>
+        <strong>ATTENTION</strong>
+        <br/>
+        <br/>
+        This package is planned for development or testing environments, plese DO NOT install it on a production system.<br/>
+        <br/>
+        <br/>
+        ((Carlos))<br/>
+        <br/>
+    ]]></IntroInstall>
+    <IntroInstall Type="post" Title="Installation Information" Lang="en"><![CDATA[
+        <br/>
+        <strong>NOTICE</strong>
+        <br/>
+        <br/>
+        The command line tool was installed on your otrs home directory /bin/otrs.DevDeleteTicket.
+        <br/>
+        <br/>
+        The GUI tool is not completed yet and is not included into this package.
+        <br/>
+        <br/>
+        ((Carlos))<br/>
+        <br/>
+    ]]></IntroInstall>
+    <IntroUpgrade Type="pre" Title="Upgrade Information" Lang="en"><![CDATA[
+        <br/>
+        <strong>WELCOME</strong>
+        <br/>
+        <br/>
+        You are about to upgrade the Developer's Delete Ticket package.<br/>
+        <br/>
+        <br/>
+        ((Carlos))<br/>
+        <br/>
+    ]]></IntroUpgrade>
+    <IntroUninstall Type="pre" Title="Uninstallation Information" Lang="en"><![CDATA[
+        <br/>
+        <strong>THANK YOU</strong>
+        <br/>
+        <br/>
+        Thank you for using / tring this package, any feedback is welcome.
+        <br/>
+        <br/>
+        ((Carlos))<br/>
+        <br/>
+    ]]></IntroUninstall>
+</otrs_package>
