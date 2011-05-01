@@ -249,7 +249,7 @@ sub _CreateObjects{
 
 sub _Help {
     print <<"EOF";
-otrs.DevDeleteTicket.pl <Revision $VERSION> - Commandline interface to delete tickets.
+otrs.DevDeleteTicket.pl <Revision $VERSION> - Command line interface to delete tickets.
 
 Usage: otrs.DevDeleteTicket.pl
 Options:
@@ -257,7 +257,7 @@ Options:
     -a delete -i => 123,        # deletes the ticket with ID 123
     -a delete -x => 1           # deletes all tickets in the system except otrs welcome ticket
     -a delete -z => 2           # deletes all tickets in the system including otrs welcome ticket
-Copyright (C) 2011-2011 Carlos Rodriguez
+Copyright (C) 2011 Carlos Rodriguez
 
 EOF
 
