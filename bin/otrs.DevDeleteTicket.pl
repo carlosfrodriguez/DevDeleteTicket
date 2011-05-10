@@ -46,9 +46,23 @@ use Kernel::System::DB;
 use Kernel::System::Main;
 use Kernel::System::Ticket;
 
+
+    my %CommonObject;
+    $CommonObject{ConfigObject} = Kernel::Config->new();
+    $CommonObject{EncodeObject} = Kernel::System::Encode->new(%CommonObject);
+    $CommonObject{LogObject}    = Kernel::System::Log->new(
+        LogPrefix => 'otrs.DevDeleteTicket',
+        %CommonObject,
+    );
+    $CommonObject{MainObject}   = Kernel::System::Main->new(%CommonObject);
+    $CommonObject{TimeObject}   = Kernel::System::Time->new(%CommonObject);
+    $CommonObject{DBObject}     = Kernel::System::DB->new(%CommonObject);
+    $CommonObject{TicketObject} = Kernel::System::Ticket->new(%CommonObject);
+
+
 # get options
 my %Opts = ();
-getopt( 'haix', \%Opts );
+getopt( 'haixn', \%Opts );
 
 if ( $Opts{h} ) {
     _Help();
@@ -106,6 +120,17 @@ elsif ( $Opts{a} && $Opts{a} eq 'delete' ) {
         exit 0;
     }
 }
+elsif ( $Opts{a} && $Opts{a} eq 'search' ) {
+
+    my %SearchOptions;
+
+    if ( $Opts{n} ) {
+        $SearchOptions{TicketNumber} = $Opts{n};
+    }
+
+    _search( SearchOptions => \%SearchOptions );
+
+}
 else {
     _Help();
     exit 1;
@@ -115,9 +140,6 @@ else {
 
 sub _List {
 
-    # create needed objects
-    my %CommonObject = _CreateObjects();
-
     # search all tickets
     my @TicketIDs = $CommonObject{TicketObject}->TicketSearch(
         Result  => 'ARRAY',
@@ -125,6 +147,33 @@ sub _List {
         SortBy  => 'Age',
         OrderBy => 'Up',
     );
+
+    _Output( TicketIDs => \@TicketIDs );
+}
+
+sub _search {
+    my %Param = @_;
+
+    my %SearchOptions = %{ $Param{SearchOptions} };
+
+
+    # search all tickets
+    my @TicketIDs = $CommonObject{TicketObject}->TicketSearch(
+        Result  => 'ARRAY',
+        UserID  => 1,
+        SortBy  => 'Age',
+        OrderBy => 'Up',
+        %SearchOptions,
+    );
+
+    _Output( TicketIDs => \@TicketIDs );
+}
+
+
+sub _Output{
+    my %Param = @_;
+
+    my @TicketIDs = @{ $Param{TicketIDs} };
 
     # to store all ticket details
     my @Tickets;
@@ -144,21 +193,68 @@ sub _List {
        push @Tickets, \%Ticket,
     }
 
+    my %ColumnLength = (
+        ID       => 7,
+        Number   => 20,
+        Owner    => 24,
+        Customer => 24,
+        Title    => 24,
+    );
+
+    # print header
+    print "\n";
+    for my $HeaderName ( qw(ID Number Owner Customer Title) ) {
+        my $HeaderLength = length $HeaderName;
+        my $WhiteSpaces;
+        if ( $HeaderLength < $ColumnLength{$HeaderName} ) {
+            $WhiteSpaces = $ColumnLength{$HeaderName} - $HeaderLength;
+        }
+        print $HeaderName;
+        if ($WhiteSpaces) {
+            for ( 0 .. $WhiteSpaces ) {
+                print " ";
+            }
+        }
+    }
+    print "\n";
+
+    for ( 1..100 ) {
+        print '=';
+    }
+    print "\n";
+
+    # print each ticket row
     for my $Ticket (@Tickets) {
 
-        # it could be that there is no CustomerUserID i.e. otrs default (welcome) ticket
-        my $CustomerUserID = $Ticket->{CustomerUserID}|| '';
-        print "$Ticket->{TicketID} $Ticket->{TicketNumber} $Ticket->{Owner} "
-        . "$CustomerUserID $Ticket->{Title}\n";
+        # prepare ticket information
+        $Ticket->{ID}       = $Ticket->{TicketID} || '';
+        $Ticket->{Number}   = $Ticket->{TicketNumber} || '';
+        $Ticket->{Owner}    = $Ticket->{Owner} || '';
+        $Ticket->{Customer} = $Ticket->{CustomerUserID} || '';
+        $Ticket->{Title}    = $Ticket->{Title} || '';
+
+        # print ticket row
+        for my $Element ( qw(ID Number Owner Customer Title) ) {
+            my $ElementLength = length $Ticket->{$Element};
+            my $WhiteSpaces;
+            if ( $ElementLength < $ColumnLength{$Element} ) {
+                $WhiteSpaces = $ColumnLength{$Element} - $ElementLength;
+            }
+            print $Ticket->{$Element};
+            if ($WhiteSpaces) {
+                for ( 0 .. $WhiteSpaces ) {
+                    print " ";
+                }
+            }
+        }
+        print "\n";
     }
+    print "\n";
+
 }
 
 sub _Delete{
-
     my %Param = @_;
-
-    # create needed objects
-    my %CommonObject = _CreateObjects();
 
     # check needed parameters
     if ( !$Param{TicketID} && !$Param{All} ){
@@ -232,21 +328,6 @@ sub _Delete{
     return $Failed;
 };
 
-sub _CreateObjects{
-    my %CommonObject;
-    $CommonObject{ConfigObject} = Kernel::Config->new();
-    $CommonObject{EncodeObject} = Kernel::System::Encode->new(%CommonObject);
-    $CommonObject{LogObject}    = Kernel::System::Log->new(
-        LogPrefix => 'otrs.DevDeleteTicket',
-        %CommonObject,
-    );
-    $CommonObject{MainObject}   = Kernel::System::Main->new(%CommonObject);
-    $CommonObject{TimeObject}   = Kernel::System::Time->new(%CommonObject);
-    $CommonObject{DBObject}     = Kernel::System::DB->new(%CommonObject);
-    $CommonObject{TicketObject} = Kernel::System::Ticket->new(%CommonObject);
-    return %CommonObject;
-}
-
 sub _Help {
     print <<"EOF";
 otrs.DevDeleteTicket.pl <Revision $VERSION> - Command line interface to delete tickets.
@@ -254,16 +335,16 @@ otrs.DevDeleteTicket.pl <Revision $VERSION> - Command line interface to delete t
 Usage: otrs.DevDeleteTicket.pl
 Options:
     -a list                     # list all tickets
-    -a delete -i => 123,        # deletes the ticket with ID 123
-    -a delete -x => 1           # deletes all tickets in the system except otrs welcome ticket
-    -a delete -z => 2           # deletes all tickets in the system including otrs welcome ticket
+    -a search -n *1234*     # search tickets with specified ticket number (wild cards are allowed)
+    -a delete -i 123        # deletes the ticket with ID 123
+    -a delete -x 1           # deletes all tickets in the system except otrs welcome ticket
+    -a delete -x 2           # deletes all tickets in the system including otrs welcome ticket
 Copyright (C) 2011 Carlos Rodriguez
 
 EOF
 
 #TODO Implement
 #    -a search -f => Text,       # Full text search
-#    -a search -n => 1234,       # Ticket number
 #    -a search -c => carlos,     # Ticket customer login
 #    -a search -i => 123,        # Ticket ID
 #    -a serach -o => cr@wolf.net # Ticket owner login
