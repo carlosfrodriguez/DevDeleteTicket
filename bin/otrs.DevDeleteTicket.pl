@@ -36,7 +36,7 @@ use lib dirname($RealBin);
 use lib dirname($RealBin) . "/Kernel/cpan-lib";
 
 use vars qw($VERSION);
-$VERSION = qw($Revision: 0.1 $) [1];
+$VERSION = qw($Revision: 0.2 $) [1];
 
 use Getopt::Std;
 use Kernel::Config;
@@ -45,6 +45,7 @@ use Kernel::System::Log;
 use Kernel::System::DB;
 use Kernel::System::Main;
 use Kernel::System::Ticket;
+use Kernel::System::User;
 
 
     my %CommonObject;
@@ -58,11 +59,12 @@ use Kernel::System::Ticket;
     $CommonObject{TimeObject}   = Kernel::System::Time->new(%CommonObject);
     $CommonObject{DBObject}     = Kernel::System::DB->new(%CommonObject);
     $CommonObject{TicketObject} = Kernel::System::Ticket->new(%CommonObject);
+    $CommonObject{UserObject}   = Kernel::System::User->new(%CommonObject);
 
 
 # get options
 my %Opts = ();
-getopt( 'haixn', \%Opts );
+getopt( 'haixnoctf', \%Opts );
 
 if ( $Opts{h} ) {
     _Help();
@@ -124,8 +126,39 @@ elsif ( $Opts{a} && $Opts{a} eq 'search' ) {
 
     my %SearchOptions;
 
+    # ticket number search
     if ( $Opts{n} ) {
         $SearchOptions{TicketNumber} = $Opts{n};
+    }
+
+    # owner ID search
+    if ( $Opts{o} ) {
+
+        # search by owner needs to have a valid user, do a user lookup and retreive the UserID
+        my $UserID = $CommonObject{UserObject}->UserLookup(UserLogin => $Opts{o});
+        if ( !$UserID ) {
+            print "The user $Opts{o} does not exist in the database!\n";
+            exit 1;
+        }
+
+        $SearchOptions{OwnerIDs} = [$UserID];
+    }
+
+    # customer search
+    if ( $Opts{c} ) {
+        $SearchOptions{CustomerUserLogin} = $Opts{c};
+    }
+
+    # title search
+    if ( $Opts{t} ) {
+        $SearchOptions{Title} = $Opts{t};
+    }
+
+    # full text search on From To Cc Subject Body
+    if ( $Opts{f} ) {
+        for my $TicketElement ( qw(From To Cc Subject Body) ) {
+            $SearchOptions{$TicketElement} = $Opts{f};
+        }
     }
 
     _search( SearchOptions => \%SearchOptions );
@@ -163,6 +196,8 @@ sub _search {
         UserID  => 1,
         SortBy  => 'Age',
         OrderBy => 'Up',
+        ContentSearch => 'OR',
+        FullTextIndex => 1,
         %SearchOptions,
     );
 
@@ -334,19 +369,19 @@ otrs.DevDeleteTicket.pl <Revision $VERSION> - Command line interface to delete t
 
 Usage: otrs.DevDeleteTicket.pl
 Options:
-    -a list                     # list all tickets
-    -a search -n *1234*     # search tickets with specified ticket number (wild cards are allowed)
-    -a delete -i 123        # deletes the ticket with ID 123
-    -a delete -x 1           # deletes all tickets in the system except otrs welcome ticket
-    -a delete -x 2           # deletes all tickets in the system including otrs welcome ticket
+    -a list                       # list all tickets
+
+    -a search -n *1234*           # search tickets with specified ticket number (wild cards are allowed)
+    -a search -T *welcome*        # search tickets with specified ticket title (wild cards are allowed)
+    -a serach -o root\@localhost   # search tickets with specified ticket owner login
+    -a search -c carlos           # search tickets with specified ticket customer login
+    -a search -f *Text*           # full text search on fields To, From Cs Subject and Body (wild cards are allowed)
+
+    -a delete -i 123              # deletes the ticket with ID 123
+    -a delete -x 1                # deletes all tickets in the system except otrs welcome ticket
+    -a delete -x 2                # deletes all tickets in the system including otrs welcome ticket
+
 Copyright (C) 2011 Carlos Rodriguez
 
 EOF
-
-#TODO Implement
-#    -a search -f => Text,       # Full text search
-#    -a search -c => carlos,     # Ticket customer login
-#    -a search -i => 123,        # Ticket ID
-#    -a serach -o => cr@wolf.net # Ticket owner login
-
 }
