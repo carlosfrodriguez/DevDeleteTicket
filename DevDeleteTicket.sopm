@@ -2,12 +2,14 @@
 <otrs_package version="1.0">
     <CVS>$Id: DevDeleteTicket.sopm,v 0.1 2011/05/01 00:00:00 cr Exp $</CVS>
     <Name>DevDeleteTicket</Name>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <Framework>3.0.x</Framework>
     <Vendor>Carlos Rodriguez</Vendor>
     <URL></URL>
     <License>GNU AFFERO GENERAL PUBLIC LICENSE Version 3, November 2007</License>
     <Description Lang="en">The Developer's Delete Ticket Package .</Description>
+    <ChangeLog Date="2011-05-01 00:00:00" Version="0.0.1">Initial release for OTRS 3.0</ChangeLog>
+    <ChangeLog Date="2011-05-12 00:00:00" Version="0.0.2">Added search options</ChangeLog>
     <Filelist>
         <File Permission="755" Location="bin/otrs.DevDeleteTicket.pl"/>
     </Filelist>
