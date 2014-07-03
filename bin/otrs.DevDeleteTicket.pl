@@ -1,10 +1,8 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 # --
 # bin/otrs.DevDeleteTicket.pl - Delete Tikets
 # This package is intended to work on Development and Testing Environments
-# Copyright (C) 2011 Carlos Rodriguez, http://otrs.org/
-# --
-# $Id: otrs.DevDeleteTicket.pl,v 1.0 2011/04/30 00:00:00 cr Exp $
+# Copyright (C) 2014 Carlos Rodriguez, https://github.com/carlosfrodriguez
 # --
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU AFFERO General Public License as published by
@@ -18,13 +16,12 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 # or see http://www.gnu.org/licenses/agpl.txt.
-#
+# --
 # DO NOT USE THIS FILE ON PRODUCTION SYSTEMS!
 #
-# otrs is Copyright (C) 2001-2011 OTRS AG, http://otrs.org/
-# --
+# otrs is Copyright (C) 2001-2014 OTRS AG, http://otrs.com/
 
 use strict;
 use warnings;
@@ -35,32 +32,24 @@ use FindBin qw($RealBin);
 use lib dirname($RealBin);
 use lib dirname($RealBin) . "/Kernel/cpan-lib";
 
-use vars qw($VERSION);
-$VERSION = qw($Revision: 0.2 $) [1];
-
 use Getopt::Std;
-use Kernel::Config;
-use Kernel::System::Encode;
-use Kernel::System::Log;
-use Kernel::System::DB;
-use Kernel::System::Main;
-use Kernel::System::Ticket;
-use Kernel::System::User;
 
+use Kernel::System::ObjectManager;
 
-    my %CommonObject;
-    $CommonObject{ConfigObject} = Kernel::Config->new();
-    $CommonObject{EncodeObject} = Kernel::System::Encode->new(%CommonObject);
-    $CommonObject{LogObject}    = Kernel::System::Log->new(
-        LogPrefix => 'otrs.DevDeleteTicket',
-        %CommonObject,
-    );
-    $CommonObject{MainObject}   = Kernel::System::Main->new(%CommonObject);
-    $CommonObject{TimeObject}   = Kernel::System::Time->new(%CommonObject);
-    $CommonObject{DBObject}     = Kernel::System::DB->new(%CommonObject);
-    $CommonObject{TicketObject} = Kernel::System::Ticket->new(%CommonObject);
-    $CommonObject{UserObject}   = Kernel::System::User->new(%CommonObject);
-
+# create common objects
+local $Kernel::OM = Kernel::System::ObjectManager->new(
+    LogObject => {
+        LogPrefix => 'OTRS-otrs.DevDeleteTicket.pl',
+    },
+);
+my %CommonObject = $Kernel::OM->ObjectHash(
+    Objects => [
+        qw(
+            ConfigObject EncodeObject LogObject MainObject DBObject TimeObject TicketObject
+            UserObject
+            )
+    ],
+);
 
 # get options
 my %Opts = ();
@@ -69,7 +58,7 @@ getopt( 'haixnoctf', \%Opts );
 if ( $Opts{h} ) {
     _Help();
 }
-elsif ( $Opts{a} && $Opts{a} eq 'list' ){
+elsif ( $Opts{a} && $Opts{a} eq 'list' ) {
     _List();
 }
 elsif ( $Opts{a} && $Opts{a} eq 'delete' ) {
@@ -77,19 +66,19 @@ elsif ( $Opts{a} && $Opts{a} eq 'delete' ) {
     my $ExitCode;
 
     # check if ticket id is passed
-    if ( $Opts{i} ){
+    if ( $Opts{i} ) {
 
-            # check if ID is numeric valid
-            if ($Opts{i} !~ m{\d+} ) {
-                print "The Ticket ID $Opts{i} is invalid!\n";
-                _Help();
-                exit 0;
-            }
-            else {
+        # check if ID is numeric valid
+        if ( $Opts{i} !~ m{\d+} ) {
+            print "The Ticket ID $Opts{i} is invalid!\n";
+            _Help();
+            exit 0;
+        }
+        else {
 
-                # delete ticket by ID
-                _Delete( TicketID => $Opts{i} );
-            }
+            # delete ticket by ID
+            _Delete( TicketID => $Opts{i} );
+        }
     }
 
     # check if delete all tickets
@@ -101,7 +90,7 @@ elsif ( $Opts{a} && $Opts{a} eq 'delete' ) {
                 All           => 1,
                 ExceptWelcome => 1,
             );
-            if ($ExitCode){
+            if ($ExitCode) {
                 exit 1;
             }
             exit 0;
@@ -109,8 +98,8 @@ elsif ( $Opts{a} && $Opts{a} eq 'delete' ) {
         else {
 
             # delete all tickets
-            $ExitCode = _Delete ( All => 1 );
-            if ($ExitCode){
+            $ExitCode = _Delete( All => 1 );
+            if ($ExitCode) {
                 exit 1;
             }
             exit 0;
@@ -135,7 +124,7 @@ elsif ( $Opts{a} && $Opts{a} eq 'search' ) {
     if ( $Opts{o} ) {
 
         # search by owner needs to have a valid user, do a user lookup and retreive the UserID
-        my $UserID = $CommonObject{UserObject}->UserLookup(UserLogin => $Opts{o});
+        my $UserID = $CommonObject{UserObject}->UserLookup( UserLogin => $Opts{o} );
         if ( !$UserID ) {
             print "The user $Opts{o} does not exist in the database!\n";
             exit 1;
@@ -156,7 +145,7 @@ elsif ( $Opts{a} && $Opts{a} eq 'search' ) {
 
     # full text search on From To Cc Subject Body
     if ( $Opts{f} ) {
-        for my $TicketElement ( qw(From To Cc Subject Body) ) {
+        for my $TicketElement (qw(From To Cc Subject Body)) {
             $SearchOptions{$TicketElement} = $Opts{f};
         }
     }
@@ -189,13 +178,12 @@ sub _search {
 
     my %SearchOptions = %{ $Param{SearchOptions} };
 
-
     # search all tickets
     my @TicketIDs = $CommonObject{TicketObject}->TicketSearch(
-        Result  => 'ARRAY',
-        UserID  => 1,
-        SortBy  => 'Age',
-        OrderBy => 'Up',
+        Result        => 'ARRAY',
+        UserID        => 1,
+        SortBy        => 'Age',
+        OrderBy       => 'Up',
         ContentSearch => 'OR',
         FullTextIndex => 1,
         %SearchOptions,
@@ -204,8 +192,7 @@ sub _search {
     _Output( TicketIDs => \@TicketIDs );
 }
 
-
-sub _Output{
+sub _Output {
     my %Param = @_;
 
     my @TicketIDs = @{ $Param{TicketIDs} };
@@ -213,7 +200,7 @@ sub _Output{
     # to store all ticket details
     my @Tickets;
 
-    for my $TicketID ( @TicketIDs ) {
+    for my $TicketID (@TicketIDs) {
 
         next if !$TicketID;
 
@@ -225,7 +212,7 @@ sub _Output{
         next if !%Ticket;
 
         # store ticket details
-       push @Tickets, \%Ticket,
+        push @Tickets, \%Ticket,
     }
 
     my %ColumnLength = (
@@ -238,7 +225,7 @@ sub _Output{
 
     # print header
     print "\n";
-    for my $HeaderName ( qw(ID Number Owner Customer Title) ) {
+    for my $HeaderName (qw(ID Number Owner Customer Title)) {
         my $HeaderLength = length $HeaderName;
         my $WhiteSpaces;
         if ( $HeaderLength < $ColumnLength{$HeaderName} ) {
@@ -253,7 +240,7 @@ sub _Output{
     }
     print "\n";
 
-    for ( 1..100 ) {
+    for ( 1 .. 100 ) {
         print '=';
     }
     print "\n";
@@ -262,14 +249,14 @@ sub _Output{
     for my $Ticket (@Tickets) {
 
         # prepare ticket information
-        $Ticket->{ID}       = $Ticket->{TicketID} || '';
-        $Ticket->{Number}   = $Ticket->{TicketNumber} || '';
-        $Ticket->{Owner}    = $Ticket->{Owner} || '';
+        $Ticket->{ID}       = $Ticket->{TicketID}       || '';
+        $Ticket->{Number}   = $Ticket->{TicketNumber}   || '';
+        $Ticket->{Owner}    = $Ticket->{Owner}          || '';
         $Ticket->{Customer} = $Ticket->{CustomerUserID} || '';
-        $Ticket->{Title}    = $Ticket->{Title} || '';
+        $Ticket->{Title}    = $Ticket->{Title}          || '';
 
         # print ticket row
-        for my $Element ( qw(ID Number Owner Customer Title) ) {
+        for my $Element (qw(ID Number Owner Customer Title)) {
             my $ElementLength = length $Ticket->{$Element};
             my $WhiteSpaces;
             if ( $ElementLength < $ColumnLength{$Element} ) {
@@ -288,18 +275,18 @@ sub _Output{
 
 }
 
-sub _Delete{
+sub _Delete {
     my %Param = @_;
 
     # check needed parameters
-    if ( !$Param{TicketID} && !$Param{All} ){
+    if ( !$Param{TicketID} && !$Param{All} ) {
         print "Need \"TicketID\" or \"All\" parameter\n";
         _Help();
         exit 1;
     }
 
     # check if both parameters are passed
-    if ( !$Param{TicketID} && !$Param{All} ){
+    if ( !$Param{TicketID} && !$Param{All} ) {
         print "Can't use both \"TicketID\" and \"All\" parameters at the same time";
         _Help();
         exit 1;
@@ -309,12 +296,12 @@ sub _Delete{
     my @TicketIDsToDelete;
 
     # delete one ticket
-    if ( $Param{TicketID} ){
+    if ( $Param{TicketID} ) {
         push @TicketIDsToDelete, $Param{TicketID};
     }
 
     # delete all tickets
-    if ( $Param{All} ){
+    if ( $Param{All} ) {
 
         # search all tickets
         my @TicketIDs = $CommonObject{TicketObject}->TicketSearch(
@@ -330,7 +317,7 @@ sub _Delete{
     my $Failed;
 
     TICKETID:
-    for my $TicketID ( @TicketIDsToDelete ) {
+    for my $TicketID (@TicketIDsToDelete) {
 
         next TICKETID if !$TicketID;
 
@@ -343,7 +330,7 @@ sub _Delete{
         );
 
         # check if ticket exists
-        if ( !%Ticket ){
+        if ( !%Ticket ) {
             print "The ticket with ID $Param{TicketID} does not exist!\n";
             $Failed = 1;
             next TICKETID;
@@ -355,24 +342,24 @@ sub _Delete{
             UserID   => 1,
         );
 
-        if (!$Success) {
+        if ( !$Success ) {
             print "Can't delete ticket $TicketID\n";
             $Failed = 1;
         }
     }
     return $Failed;
-};
+}
 
 sub _Help {
     print <<"EOF";
-otrs.DevDeleteTicket.pl <Revision $VERSION> - Command line interface to delete tickets.
+otrs.DevDeleteTicket.pl - Command line interface to delete tickets.
 
 Usage: otrs.DevDeleteTicket.pl
 Options:
     -a list                       # list all tickets
 
     -a search -n *1234*           # search tickets with specified ticket number (wild cards are allowed)
-    -a search -T *welcome*        # search tickets with specified ticket title (wild cards are allowed)
+    -a search -t *welcome*        # search tickets with specified ticket title (wild cards are allowed)
     -a serach -o root\@localhost   # search tickets with specified ticket owner login
     -a search -c carlos           # search tickets with specified ticket customer login
     -a search -f *Text*           # full text search on fields To, From Cs Subject and Body (wild cards are allowed)
@@ -381,7 +368,7 @@ Options:
     -a delete -x 1                # deletes all tickets in the system except otrs welcome ticket
     -a delete -x 2                # deletes all tickets in the system including otrs welcome ticket
 
-Copyright (C) 2011 Carlos Rodriguez
+Copyright (C) 2014 Carlos Rodriguez
 
 EOF
 }
